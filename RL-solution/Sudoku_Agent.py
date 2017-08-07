@@ -34,6 +34,7 @@ class RL_sudoku:
         self.EXPLORE = 3000000.0 # frames over which to anneal epsilon
         self.MEMORY_LIMIT = 50000 # maximum number of memory
         self.BATCH = 50 # training batch size
+        self.TEST_BATCH = 1000 # test size
         self.GAMMA = 0.9 # reward decay rate
 
 
@@ -47,53 +48,88 @@ class RL_sudoku:
         self.test_X = data[train_num:, 0, :]
         self.test_Y = data[train_num:, 1, :]
         self.train_index = 0
+        self.test_index = 0
         self.INPUT_SIZE = self.train_X.shape[1]
 
-    def genMove(self, action=None):
+    def genMove(self, mode, action=None):
         if (action is None): # initial
-            self.current_train_X = self.train_X[self.train_index, :]
-            self.train_index += 1
-            if self.train_index >= len(self.train_X):
-                self.train_index = 0
-            return (self.current_train_X, 0, 0) # (state, reward, terminate)
+            if (mode == 'Train'):
+                self.current_X = self.train_X[self.train_index, :]
+                self.Question = self.train_X[self.train_index, :]
+                self.Answer = self.train_Y[self.train_index, :]
+                self.train_index += 1
+                if self.train_index >= len(self.train_X):
+                    self.train_index = 0
+                return (self.current_X, 0, 0) # (state, reward, terminate)
+            elif (mode == 'Test'):
+                self.test_base = np.random.randint(low = 0, high = self.test_X.shape[0]-self.TEST_BATCH)
+                self.current_X = self.test_X[self.test_base + self.test_index, :]
+                self.Question = self.test_X[self.test_base + self.test_index, :]
+                self.Answer = self.test_Y[self.test_base + self.test_index, :]
+                self.test_index += 1
+                return (self.current_X, 0, 0)
         else: # decode action
             loc = np.argwhere(action == 1)
             value = loc / 81 + 1
             index = loc % 81
-            return self.evaluateMove(index, value)
+            return self.evaluateMove(index, value, mode)
 
-    def evaluateMove(self, index, value):
+    def evaluateMove(self, index, value, mode):
         # self.current_train_X[index] = value
-        if (self.train_X[self.train_index-1, index] != 0): # change question basic
+        if (self.Question[index] != 0): # change question basic
             terminate = 1
             reward = -100
-            self.current_train_X = self.train_X[self.train_index, :]
-            self.train_index += 1
-            if self.train_index >= len(self.train_X):
-                self.train_index = 0
-        elif (self.current_train_X[index] == self.train_Y[self.train_index-1, index]): # modify right answer
-            terminate = 1
-            reward = -100
-            self.current_train_X = self.train_X[self.train_index, :]
-            self.train_index += 1
-            if self.train_index >= len(self.train_X):
-                self.train_index = 0
-        else:
-            self.current_train_X[index] = value # really fill in changes
-            if (np.array_equal(self.current_train_X, self.train_Y[self.train_index-1, :])): # finish one problem
-                terminate = 1
-                reward = 10
-                self.current_train_X = self.train_X[self.train_index, :]
+            if (mode == 'Train'):
+                self.current_X = self.train_X[self.train_index, :]
+                self.Question = self.train_X[self.train_index, :]
+                self.Answer = self.train_Y[self.train_index, :]
                 self.train_index += 1
                 if self.train_index >= len(self.train_X):
                     self.train_index = 0
-            elif (self.train_Y[self.train_index-1, index] == value): # fill in a right answer
+            elif (mode == 'Test'):
+                self.current_X = self.test_X[self.test_base + self.test_index, :]
+                self.Question = self.test_X[self.test_base + self.test_index, :]
+                self.Answer = self.test_Y[self.test_base + self.test_index, :]
+                self.test_index += 1
+        elif (self.current_X[index] == self.Answer[index]): # modify right answer
+            terminate = 1
+            reward = -100
+            if (mode == 'Train'):
+                self.current_X = self.train_X[self.train_index, :]
+                self.Question = self.train_X[self.train_index, :]
+                self.Answer = self.train_Y[self.train_index, :]
+                self.train_index += 1
+                if self.train_index >= len(self.train_X):
+                    self.train_index = 0
+            elif (mode == 'Test'):
+                self.current_X = self.test_X[self.test_base + self.test_index, :]
+                self.Question = self.test_X[self.test_base + self.test_index, :]
+                self.Answer = self.test_Y[self.test_base + self.test_index, :]
+                self.test_index += 1
+        else:
+            self.current_X[index] = value # really fill in changes
+            if (np.array_equal(self.current_X, self.Answer)): # finish one problem
+                terminate = 1
+                reward = 10
+                if (mode == 'Train'):
+                    self.current_X = self.train_X[self.train_index, :]
+                    self.Question = self.train_X[self.train_index, :]
+                    self.Answer = self.train_Y[self.train_index, :]
+                    self.train_index += 1
+                    if self.train_index >= len(self.train_X):
+                        self.train_index = 0
+                elif (mode == 'Test'):
+                    self.current_X = self.test_X[self.test_base + self.test_index, :]
+                    self.Question = self.test_X[self.test_base + self.test_index, :]
+                    self.Answer = self.test_Y[self.test_base + self.test_index, :]
+                    self.test_index += 1
+            elif (self.Answer[index] == value): # fill in a right answer
                 terminate = 0
                 reward = 1
             else: # fill in a wrong answer
                 terminate = 0
                 reward = -1
-        return (self.current_train_X, reward, terminate)
+        return (self.current_X, reward, terminate)
 
     def buildModel(self):
         print("Building Model")
@@ -114,7 +150,7 @@ class RL_sudoku:
         # initial replay memory
         self.memory = None
         # get initial state
-        state, _, _ = self.genMove()
+        state, _, _ = self.genMove(mode = 'Train')
         state = state.reshape(1, state.shape[0])
         # training process
         global_t = 0 # global training step
@@ -129,12 +165,12 @@ class RL_sudoku:
                 action_index = random.randrange(self.ACTIONS)
                 action[action_index] = 1
             else:
-                q = self.model.predict(state)       #input a stack of 4 images, get the prediction
+                q = self.model.predict(state) 
                 max_Q = np.argmax(q)
                 action_index = max_Q
                 action[max_Q] = 1
             # execute action
-            next_state, reward, terminate = self.genMove(action)
+            next_state, reward, terminate = self.genMove(mode = 'Train', action = action)
             next_state = next_state.reshape(1, next_state.shape[0])
             # store the transition in D
             feedback = np.array([action_index, reward, terminate])
@@ -181,8 +217,37 @@ class RL_sudoku:
                     self.model.save_weights("model.h5", overwrite=True)
                     with open("model.json", "w") as outfile:
                         json.dump(self.model.to_json(), outfile)
-                
+                    # test model
+                    self.testModel()
         print("Training Finished")
+        
+    def testModel(self):
+        # load the saved weights
+        self.model.load_weights("model.h5")
+        print('Model Loaded')
+        # initial test
+        state, _, _ = self.genMove(mode = 'Test')
+        state = state.reshape(1, state.shape[0])
+        result = []
+        while (self.test_index < self.TEST_BATCH):
+            # generate action
+            action = np.zeros([self.ACTIONS])
+            q = self.model.predict(state)      
+            max_Q = np.argmax(q)
+            action[max_Q] = 1
+            # execute action
+            next_state, reward, terminate = self.genMove(mode = 'Test', action = action)
+            next_state = next_state.reshape(1, next_state.shape[0])
+            # check right or wrong when terminate
+            if (terminate == 1):
+                if (reward == 10):
+                    result.append(1)
+                elif (reward == -100):
+                    result.append(0)
+            # update state
+            state = next_state
+        print('Current model has ' + str(sum(result)/float(self.TEST_BATCH)) + '% test accuracy')
+        
 
 
 
