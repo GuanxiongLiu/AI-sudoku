@@ -27,14 +27,13 @@ class RL_sudoku:
         self.SPLIT_RATIO = 0.7
         self.LEARNING_RATE = 1e-4 # optimizer learning rate
         self.OBSERVATION = 3200. # steps to observe before training
-        self.INITIAL_EPSILON = 0.1 # starting value of epsilon
+        self.INITIAL_EPSILON = 0.5 # starting value of epsilon
         self.FINAL_EPSILON = 0.0001 # final value of epsilon
         self.MAX_STEP = 1e5 # maximum steps
         self.ACTIONS = 9**3 # dimension of action
-        self.EXPLORE = 3000000.0 # frames over which to anneal epsilon
         self.MEMORY_LIMIT = 50000 # maximum number of memory
         self.BATCH = 50 # training batch size
-        self.TEST_BATCH = 1000 # test size
+        self.TEST_BATCH = 100 # test size
         self.GAMMA = 0.9 # reward decay rate
 
 
@@ -54,18 +53,18 @@ class RL_sudoku:
     def genMove(self, mode, action=None):
         if (action is None): # initial
             if (mode == 'Train'):
-                self.current_X = self.train_X[self.train_index, :]
-                self.Question = self.train_X[self.train_index, :]
-                self.Answer = self.train_Y[self.train_index, :]
+                self.current_X = np.copy(self.train_X[self.train_index, :])
+                self.Question = np.copy(self.train_X[self.train_index, :])
+                self.Answer = np.copy(self.train_Y[self.train_index, :])
                 self.train_index += 1
                 if self.train_index >= len(self.train_X):
                     self.train_index = 0
                 return (self.current_X, 0, 0) # (state, reward, terminate)
             elif (mode == 'Test'):
                 self.test_base = np.random.randint(low = 0, high = self.test_X.shape[0]-self.TEST_BATCH)
-                self.current_X = self.test_X[self.test_base + self.test_index, :]
-                self.Question = self.test_X[self.test_base + self.test_index, :]
-                self.Answer = self.test_Y[self.test_base + self.test_index, :]
+                self.current_X = np.copy(self.test_X[self.test_base + self.test_index, :])
+                self.Question = np.copy(self.test_X[self.test_base + self.test_index, :])
+                self.Answer = np.copy(self.test_Y[self.test_base + self.test_index, :])
                 self.test_index += 1
                 return (self.current_X, 0, 0)
         else: # decode action
@@ -78,50 +77,32 @@ class RL_sudoku:
         # self.current_train_X[index] = value
         if (self.Question[index] != 0): # change question basic
             terminate = 1
-            reward = -100
-            if (mode == 'Train'):
-                self.current_X = self.train_X[self.train_index, :]
-                self.Question = self.train_X[self.train_index, :]
-                self.Answer = self.train_Y[self.train_index, :]
-                self.train_index += 1
-                if self.train_index >= len(self.train_X):
-                    self.train_index = 0
-            elif (mode == 'Test'):
-                self.current_X = self.test_X[self.test_base + self.test_index, :]
-                self.Question = self.test_X[self.test_base + self.test_index, :]
-                self.Answer = self.test_Y[self.test_base + self.test_index, :]
-                self.test_index += 1
+            reward = -10
+            return self.genMove(mode)
         elif (self.current_X[index] == self.Answer[index]): # modify right answer
             terminate = 1
-            reward = -100
-            if (mode == 'Train'):
-                self.current_X = self.train_X[self.train_index, :]
-                self.Question = self.train_X[self.train_index, :]
-                self.Answer = self.train_Y[self.train_index, :]
-                self.train_index += 1
-                if self.train_index >= len(self.train_X):
-                    self.train_index = 0
-            elif (mode == 'Test'):
-                self.current_X = self.test_X[self.test_base + self.test_index, :]
-                self.Question = self.test_X[self.test_base + self.test_index, :]
-                self.Answer = self.test_Y[self.test_base + self.test_index, :]
-                self.test_index += 1
+            reward = -10
+            return self.genMove(mode)
+        elif (self.current_X[index] == value): # stop in filling one specific wrong answer
+            terminate = 1
+            reward = -10
+            return self.genMove(mode)
         else:
             self.current_X[index] = value # really fill in changes
             if (np.array_equal(self.current_X, self.Answer)): # finish one problem
                 terminate = 1
                 reward = 10
                 if (mode == 'Train'):
-                    self.current_X = self.train_X[self.train_index, :]
-                    self.Question = self.train_X[self.train_index, :]
-                    self.Answer = self.train_Y[self.train_index, :]
+                    self.current_X = np.copy(self.train_X[self.train_index, :])
+                    self.Question = np.copy(self.train_X[self.train_index, :])
+                    self.Answer = np.copy(self.train_Y[self.train_index, :])
                     self.train_index += 1
                     if self.train_index >= len(self.train_X):
                         self.train_index = 0
                 elif (mode == 'Test'):
-                    self.current_X = self.test_X[self.test_base + self.test_index, :]
-                    self.Question = self.test_X[self.test_base + self.test_index, :]
-                    self.Answer = self.test_Y[self.test_base + self.test_index, :]
+                    self.current_X = np.copy(self.test_X[self.test_base + self.test_index, :])
+                    self.Question = np.copy(self.test_X[self.test_base + self.test_index, :])
+                    self.Answer = np.copy(self.test_Y[self.test_base + self.test_index, :])
                     self.test_index += 1
             elif (self.Answer[index] == value): # fill in a right answer
                 terminate = 0
@@ -129,7 +110,7 @@ class RL_sudoku:
             else: # fill in a wrong answer
                 terminate = 0
                 reward = -1
-        return (self.current_X, reward, terminate)
+            return (self.current_X, reward, terminate)
 
     def buildModel(self):
         print("Building Model")
@@ -140,8 +121,18 @@ class RL_sudoku:
         # second dense layer
         self.model.add(Dense(128))
         self.model.add(Activation('relu'))
+        # third dense layer
+        self.model.add(Dense(128))
+        self.model.add(Activation('relu'))
+        # fourth dense layer
+        self.model.add(Dense(128))
+        self.model.add(Activation('relu'))
+        # fifth dense layer
+        self.model.add(Dense(128))
+        self.model.add(Activation('relu'))
         # output layer
         self.model.add(Dense(9*9*9))
+        self.model.add(Activation('relu'))
         adam = Adam(lr=self.LEARNING_RATE)
         self.model.compile(loss='mean_squared_error',optimizer=adam)
         print("Modeling Finished")
@@ -183,7 +174,7 @@ class RL_sudoku:
                 self.memory = self.memory[1:, :]
             # reduced the epsilon gradually
             if (epsilon > self.FINAL_EPSILON and len(self.memory) > self.OBSERVATION):
-                epsilon -= (self.INITIAL_EPSILON - self.FINAL_EPSILON) / self.EXPLORE
+                epsilon -= (self.INITIAL_EPSILON - self.FINAL_EPSILON) / (self.MAX_STEP*0.6)
             # update state
             state = next_state
             # memory replay training when there are enough memory
@@ -248,6 +239,36 @@ class RL_sudoku:
             state = next_state
         print('Current model has ' + str(sum(result)/float(self.TEST_BATCH)) + '% test accuracy')
         
+    def manualTest(self):
+        # load saved weights
+        self.model.load_weights("model.h5")
+        print("Model Loaded")
+        # initial question
+        state, _, terminate = self.genMove(mode = 'Test')
+        state = state.reshape(1, state.shape[0])
+        # start to solve
+        if_continue = input("Input 1 to continue: ")
+        while (if_continue == 1):
+            # generate action
+            action = np.zeros([self.ACTIONS])
+            q = self.model.predict(state)      
+            max_Q = np.argmax(q)
+            action[max_Q] = 1
+            # execute action
+            next_state, reward, terminate = self.genMove(mode = 'Test', action = action)
+            next_state = next_state.reshape(1, next_state.shape[0])
+            # visualize question, current action, state and right answer
+            print(self.Question.reshape(9,-1))
+            print(self.Answer.reshape(9,-1))
+            print((max_Q/81+1, (max_Q%81)/9+1, (max_Q%81)%9+1))
+            if (terminate != 1):
+                print(next_state.reshape(9,-1))
+            else:
+                print("Solving process is terminated")
+            # update state
+            state = next_state
+            # ask user to continue
+            if_continue = input("Input 1 to continue: ")
 
 
 

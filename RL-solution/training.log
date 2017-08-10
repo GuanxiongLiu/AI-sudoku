@@ -1,0 +1,20 @@
+Using TensorFlow backend.
+Building Model
+Modeling Finished
+2017-08-10 00:18:26.675402: W tensorflow/core/platform/cpu_feature_guard.cc:45] The TensorFlow library wasn't compiled to use SSE4.1 instructions, but these are available on your machine and could speed up CPU computations.
+2017-08-10 00:18:26.675429: W tensorflow/core/platform/cpu_feature_guard.cc:45] The TensorFlow library wasn't compiled to use SSE4.2 instructions, but these are available on your machine and could speed up CPU computations.
+2017-08-10 00:18:26.675436: W tensorflow/core/platform/cpu_feature_guard.cc:45] The TensorFlow library wasn't compiled to use AVX instructions, but these are available on your machine and could speed up CPU computations.
+2017-08-10 00:18:26.675441: W tensorflow/core/platform/cpu_feature_guard.cc:45] The TensorFlow library wasn't compiled to use AVX2 instructions, but these are available on your machine and could speed up CPU computations.
+2017-08-10 00:18:26.675447: W tensorflow/core/platform/cpu_feature_guard.cc:45] The TensorFlow library wasn't compiled to use FMA instructions, but these are available on your machine and could speed up CPU computations.
+('TIMESTEP', 100, '/ EPSILON', 0.49916683333333056, '/ Loss ', 218.95377)
+('TIMESTEP', 200, '/ EPSILON', 0.4983336666666611, '/ Loss ', 188.03612)
+('TIMESTEP', 300, '/ EPSILON', 0.4975004999999917, '/ Loss ', 111.75094)
+('TIMESTEP', 400, '/ EPSILON', 0.49666733333332225, '/ Loss ', 203.57639)
+('TIMESTEP', 500, '/ EPSILON', 0.4958341666666528, '/ Loss ', 232.50879)
+('TIMESTEP', 600, '/ EPSILON', 0.49500099999998337, '/ Loss ', 469.23062)
+('TIMESTEP', 700, '/ EPSILON', 0.49416783333331393, '/ Loss ', 628.91754)
+('TIMESTEP', 800, '/ EPSILON', 0.4933346666666445, '/ Loss ', 1292.9318)
+('TIMESTEP', 900, '/ EPSILON', 0.49250149999997506, '/ Loss ', 2606.9751)
+('TIMESTEP', 1000, '/ EPSILON', 0.4916683333333056, '/ Loss ', 7141.4019)
+Model Saved
+Model Loaded
