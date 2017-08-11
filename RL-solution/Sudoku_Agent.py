@@ -132,7 +132,6 @@ class RL_sudoku:
         self.model.add(Activation('relu'))
         # output layer
         self.model.add(Dense(9*9*9))
-        self.model.add(Activation('relu'))
         adam = Adam(lr=self.LEARNING_RATE)
         self.model.compile(loss='mean_squared_error',optimizer=adam)
         print("Modeling Finished")
