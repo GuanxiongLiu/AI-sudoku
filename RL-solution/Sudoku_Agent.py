@@ -27,7 +27,7 @@ class RL_sudoku:
         self.SPLIT_RATIO = 0.7
         self.LEARNING_RATE = 1e-4 # optimizer learning rate
         self.OBSERVATION = 3200. # steps to observe before training
-        self.INITIAL_EPSILON = 0.5 # starting value of epsilon
+        self.INITIAL_EPSILON = 0.9 # starting value of epsilon
         self.FINAL_EPSILON = 0.0001 # final value of epsilon
         self.MAX_STEP = 1e5 # maximum steps
         self.ACTIONS = 9**3 # dimension of action
@@ -75,42 +75,25 @@ class RL_sudoku:
 
     def evaluateMove(self, index, value, mode):
         # self.current_train_X[index] = value
-        if (self.Question[index] != 0): # change question basic
+        if (self.Question[index] != 0 or \
+            self.current_X[index] == self.Answer[index] or \
+            self.Answer[index] != value): 
+        # 1.change question basic, 2.modify right answer, 3.fill in wrong answer
             terminate = 1
             reward = -10
-            return self.genMove(mode)
-        elif (self.current_X[index] == self.Answer[index]): # modify right answer
-            terminate = 1
-            reward = -10
-            return self.genMove(mode)
-        elif (self.current_X[index] == value): # stop in filling one specific wrong answer
-            terminate = 1
-            reward = -10
-            return self.genMove(mode)
+            self.genMove(mode)
         else:
-            self.current_X[index] = value # really fill in changes
-            if (np.array_equal(self.current_X, self.Answer)): # finish one problem
+            self.current_X[index] = value # apply changes
+            # finish one problem
+            if (np.array_equal(self.current_X, self.Answer)):
                 terminate = 1
                 reward = 10
-                if (mode == 'Train'):
-                    self.current_X = np.copy(self.train_X[self.train_index, :])
-                    self.Question = np.copy(self.train_X[self.train_index, :])
-                    self.Answer = np.copy(self.train_Y[self.train_index, :])
-                    self.train_index += 1
-                    if self.train_index >= len(self.train_X):
-                        self.train_index = 0
-                elif (mode == 'Test'):
-                    self.current_X = np.copy(self.test_X[self.test_base + self.test_index, :])
-                    self.Question = np.copy(self.test_X[self.test_base + self.test_index, :])
-                    self.Answer = np.copy(self.test_Y[self.test_base + self.test_index, :])
-                    self.test_index += 1
-            elif (self.Answer[index] == value): # fill in a right answer
+                self.genMove(mode)
+            # work in progress
+            else:
                 terminate = 0
                 reward = 1
-            else: # fill in a wrong answer
-                terminate = 0
-                reward = -1
-            return (self.current_X, reward, terminate)
+        return (self.current_X, reward, terminate)
 
     def buildModel(self):
         print("Building Model")
@@ -122,12 +105,6 @@ class RL_sudoku:
         self.model.add(Dense(128))
         self.model.add(Activation('relu'))
         # third dense layer
-        self.model.add(Dense(128))
-        self.model.add(Activation('relu'))
-        # fourth dense layer
-        self.model.add(Dense(128))
-        self.model.add(Activation('relu'))
-        # fifth dense layer
         self.model.add(Dense(128))
         self.model.add(Activation('relu'))
         # output layer
@@ -232,7 +209,7 @@ class RL_sudoku:
             if (terminate == 1):
                 if (reward == 10):
                     result.append(1)
-                elif (reward == -100):
+                elif (reward == -10):
                     result.append(0)
             # update state
             state = next_state
@@ -247,6 +224,7 @@ class RL_sudoku:
         state = state.reshape(1, state.shape[0])
         # start to solve
         if_continue = input("Input 1 to continue: ")
+        new_question = True
         while (if_continue == 1):
             # generate action
             action = np.zeros([self.ACTIONS])
@@ -257,12 +235,15 @@ class RL_sudoku:
             next_state, reward, terminate = self.genMove(mode = 'Test', action = action)
             next_state = next_state.reshape(1, next_state.shape[0])
             # visualize question, current action, state and right answer
-            print(self.Question.reshape(9,-1))
-            print(self.Answer.reshape(9,-1))
+            if (new_question):
+                new_question = False
+                print(self.Question.reshape(9,-1))
+                print(self.Answer.reshape(9,-1))
             print((max_Q/81+1, (max_Q%81)/9+1, (max_Q%81)%9+1))
             if (terminate != 1):
                 print(next_state.reshape(9,-1))
             else:
+                new_question = True
                 print("Solving process is terminated")
             # update state
             state = next_state
